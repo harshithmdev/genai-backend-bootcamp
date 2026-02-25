@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+
 from app.services.llm_service import generate_llm_response
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
@@ -22,10 +26,13 @@ def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    llm_reply = generate_llm_response(request.message)
-
-    return ChatResponse(
-        user_id=request.user_id,
-        user_message=request.message,
-        response=llm_reply
-    )
+    try:
+        llm_reply = generate_llm_response(request.message)
+        return ChatResponse(
+            user_id=request.user_id,
+            user_message=request.message,
+            response=llm_reply,
+        )
+    except RuntimeError as e:
+        # 503 = service temporarily unavailable
+        raise HTTPException(status_code=503, detail=str(e))

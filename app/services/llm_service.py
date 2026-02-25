@@ -1,10 +1,16 @@
-import os
-from dotenv import load_dotenv
-from openai import OpenAI
+import logging
+from openai import OpenAI, OpenAIError
 
-load_dotenv()
+from app.core.config import (
+    OPENAI_API_KEY,
+    LLM_MODEL,
+    LLM_TEMPERATURE,
+    LLM_TIMEOUT_SECONDS,
+)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+logger = logging.getLogger(__name__)
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 def generate_llm_response(user_message: str) -> str:
     prompt = (
@@ -13,10 +19,18 @@ def generate_llm_response(user_message: str) -> str:
         f"User: {user_message}"
     )
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=prompt,
-        temperature=0.3
-    )
+    try:
+        logger.info("LLM request started")
+        resp = client.responses.create(
+            model=LLM_MODEL,
+            input=prompt,
+            temperature=LLM_TEMPERATURE,
+            timeout=LLM_TIMEOUT_SECONDS,
+        )
+        logger.info("LLM request completed")
+        return resp.output_text
 
-    return response.output_text
+    except OpenAIError as e:
+        logger.exception("LLM provider error")
+        # raise a clean error up to the API layer
+        raise RuntimeError("LLM service failed. Please try again.") from e
