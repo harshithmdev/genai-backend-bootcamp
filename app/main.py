@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from app.services.llm_service import generate_llm_response
 
 app = FastAPI()
 
@@ -21,8 +22,10 @@ def health_check():
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
+    llm_reply = generate_llm_response(request.message)
+
     return ChatResponse(
         user_id=request.user_id,
         user_message=request.message,
-        response=f"You said: {request.message}"
+        response=llm_reply
     )
